@@ -56,19 +56,44 @@ def genMines(num: int):
 
 
 def drawBoard(win, mines, cleared, realboard):
+    # colors
+    curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
+    curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)
+    curses.init_pair(4, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+    curses.init_pair(5, curses.COLOR_RED, curses.COLOR_BLACK)
+    curses.init_pair(6, curses.COLOR_BLUE, curses.COLOR_BLACK)
+    curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLACK)
+    curses.init_pair(8, curses.COLOR_WHITE, curses.COLOR_BLACK)
 
     for y in range(GRID_Y):
         for x in range(GRID_X):
             # if mine is marked, draw M
             if mines[x + (y * GRID_X)]:
-                win.addstr(y, x, "M ")
+                win.addstr(y, x, "M", curses.A_REVERSE)
             # if mine is cleared, draw real board
             elif cleared[x + (y * GRID_X)]:
                 val = realboard[x + (y * GRID_X)]
                 if val == '0':
                     win.addstr(y, x, " ")
+                elif val == '1':
+                    win.addstr(y, x, "1", curses.color_pair(1))
+                elif val == '2':
+                    win.addstr(y, x, "2", curses.color_pair(2))
+                elif val == '3':
+                    win.addstr(y, x, "3", curses.color_pair(3))
+                elif val == '4':
+                    win.addstr(y, x, "4", curses.color_pair(4))
+                elif val == '5':
+                    win.addstr(y, x, "5", curses.color_pair(5))
+                elif val == '6':
+                    win.addstr(y, x, "6", curses.color_pair(6))
+                elif val == '7':
+                    win.addstr(y, x, "7", curses.color_pair(7))
+                elif val == '8':
+                    win.addstr(y, x, "8", curses.color_pair(8))
                 else:
-                    win.addstr(y, x, str(val) + " ")
+                    win.addstr(y, x, str(val))
             # else, filler
             else:
                 win.addstr(y, x, ". ")
@@ -148,8 +173,9 @@ def main(stdscr):
         # marking a mine
         if key == ord('m'):
             ind: int = cursorPos[0] + (GRID_X * cursorPos[1])
-            mines[ind] = not mines[ind]
-            changeMade = True
+            if not cleared[ind]:
+                mines[ind] = not mines[ind]
+                changeMade = True
         # clearing a mine
         if key == ord(' '):
             ind: int = cursorPos[0] + (GRID_X * cursorPos[1])
