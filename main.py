@@ -4,6 +4,8 @@ from curses import wrapper
 
 GRID_X = 30
 GRID_Y = 16
+X_SPACER = 2
+NUM_MINES = 75
 
 # THIS MIGHT HAVE TO RETURN SOMETHING
 def incTile(bigstr, mineset, tile):
@@ -20,7 +22,7 @@ def incTile(bigstr, mineset, tile):
 
 
 def genRealBoard():
-    mineset = genMines(75)
+    mineset = genMines(NUM_MINES)
     bigstr = ['0'] * (GRID_X * GRID_Y)
 
     for (a, b) in mineset:
@@ -55,7 +57,7 @@ def genMines(num: int):
     return cmines
 
 
-def drawBoard(win, mines, cleared, realboard):
+def drawBoard(win, mines, cleared, realboard, mine_counter):
     # colors
     curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
@@ -70,36 +72,40 @@ def drawBoard(win, mines, cleared, realboard):
         for x in range(GRID_X):
             # if mine is marked, draw M
             if mines[x + (y * GRID_X)]:
-                win.addstr(y, x, "M", curses.A_REVERSE)
+                win.addstr(y, x * X_SPACER, "M", curses.A_REVERSE)
             # if mine is cleared, draw real board
             elif cleared[x + (y * GRID_X)]:
                 val = realboard[x + (y * GRID_X)]
                 if val == '0':
-                    win.addstr(y, x, " ")
+                    win.addstr(y, x * X_SPACER, " ")
                 elif val == '1':
-                    win.addstr(y, x, "1", curses.color_pair(1))
+                    win.addstr(y, x * X_SPACER, "1", curses.color_pair(1))
                 elif val == '2':
-                    win.addstr(y, x, "2", curses.color_pair(2))
+                    win.addstr(y, x * X_SPACER, "2", curses.color_pair(2))
                 elif val == '3':
-                    win.addstr(y, x, "3", curses.color_pair(3))
+                    win.addstr(y, x * X_SPACER, "3", curses.color_pair(3))
                 elif val == '4':
-                    win.addstr(y, x, "4", curses.color_pair(4))
+                    win.addstr(y, x * X_SPACER, "4", curses.color_pair(4))
                 elif val == '5':
-                    win.addstr(y, x, "5", curses.color_pair(5))
+                    win.addstr(y, x * X_SPACER, "5", curses.color_pair(5))
                 elif val == '6':
-                    win.addstr(y, x, "6", curses.color_pair(6))
+                    win.addstr(y, x * X_SPACER, "6", curses.color_pair(6))
                 elif val == '7':
-                    win.addstr(y, x, "7", curses.color_pair(7))
+                    win.addstr(y, x * X_SPACER, "7", curses.color_pair(7))
                 elif val == '8':
-                    win.addstr(y, x, "8", curses.color_pair(8))
+                    win.addstr(y, x * X_SPACER, "8", curses.color_pair(8))
                 else:
-                    win.addstr(y, x, str(val))
+                    win.addstr(y, x * X_SPACER, str(val))
             # else, filler
             else:
-                win.addstr(y, x, ". ")
+                win.addstr(y, x * X_SPACER, ". ")
 
         win.addstr("\n")
-    win.addstr("PRESS 'q' TO QUIT GAME\nPROJECT MADE BY GABRIEL POMIAN")
+    win.addstr("Number of mines left: ")
+    win.addstr(str(NUM_MINES - mine_counter) + ". \n")
+    win.addstr("PRESS [q] TO QUIT GAME, ")
+    win.addstr("PROJECT MADE BY GABRIEL POMIAN")
+
 
 def clearTile(real_board, cleared, tile):
     x = tile[0]
@@ -121,15 +127,16 @@ def clearTile(real_board, cleared, tile):
 
 
 def main(stdscr):
+    mine_counter = 0
     mines = [False] * (GRID_X * GRID_Y)
     cleared = [False] * (GRID_X * GRID_Y)
     realboard = genRealBoard()
 
-    cursorPos = (10, 10)
+    cursorPos = (0, 0)
 
     stdscr.clear()
     stdscr.refresh()
-    win = curses.newwin(GRID_Y + 2, GRID_X + 5, 0, 8)
+    win = curses.newwin(GRID_Y + 2, (X_SPACER * GRID_X) + 3, 0, 8)
     win.keypad(True) # makes arrow keys easier to read
     win.nodelay(True) # makes getch not block the program
 
@@ -150,7 +157,7 @@ def main(stdscr):
             win.refresh()
             # win.border()
             changeMade = False
-            drawBoard(win, mines, cleared, realboard)
+            drawBoard(win, mines, cleared, realboard, mine_counter)
             win.move(cursorPos[1], cursorPos[0])
 
 
@@ -164,24 +171,29 @@ def main(stdscr):
         elif key == curses.KEY_DOWN and cursorPos[1] < GRID_Y - 1:
             dp = (0, 1)
         elif key == curses.KEY_LEFT and cursorPos[0] > 0:
-            dp = (-1, 0)
-        elif key == curses.KEY_RIGHT and cursorPos[0] < GRID_X - 1:
-            dp = (1, 0)
+            dp = (-1 * X_SPACER, 0)
+        elif key == curses.KEY_RIGHT and cursorPos[0] < (GRID_X * X_SPACER) - 1:
+            dp = (1 * X_SPACER, 0)
         # quitting the game
         if key == ord('q'):
             break
         # marking a mine
+        # remember, [0] is x, whcih is scaled; [1] is y which is unscaled
+        ind: int = (cursorPos[0] // X_SPACER) + (GRID_X * cursorPos[1])
+
         if key == ord('m'):
-            ind: int = cursorPos[0] + (GRID_X * cursorPos[1])
             if not cleared[ind]:
                 mines[ind] = not mines[ind]
+                if mines[ind]:
+                    mine_counter += 1
+                else:
+                    mine_counter -= 1
                 changeMade = True
         # clearing a mine
         if key == ord(' '):
-            ind: int = cursorPos[0] + (GRID_X * cursorPos[1])
             # check you're not trying to clear a marked square
             if not mines[ind]:
-                clearTile(realboard, cleared, cursorPos)
+                clearTile(realboard, cleared, (cursorPos[0] // X_SPACER, cursorPos[1]))
                 changeMade = True
 
         if dp != (0, 0):
