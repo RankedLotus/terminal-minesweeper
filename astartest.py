@@ -1,4 +1,4 @@
-# import curses
+import curses
 import random
 from collections import defaultdict
 import heapq
@@ -21,7 +21,6 @@ def is_solvable(board):
 
     # For even grid width (4x4)
     return (inversions + blank_row_from_bottom) % 2 == 1
-
 
 
 def shuffle_board():
@@ -94,23 +93,6 @@ def crawler(board, original, parents):
     ans.append(original)
     ans.reverse()
     return ans
-    # # print(board)
-    # # print(original)
-    # # for key, val in parents.items():
-    # #     print("key: ")
-    # #     print(key)
-    # #     print("val: ")
-    # #     print(val)
-    # # return board
-    # if board == original:
-    #     #print(board)
-    #     return [board]
-    #     # return [board]
-    # else:
-    #     # print(board)
-    #     # print("\n")
-    #     # return crawler(parents[board], original, board)
-    #     return [crawler(parents[board], original, board), board]
 
 def astar(board):
     solved = list(range(1, SIZE * SIZE)) + [EMPTY]
@@ -226,42 +208,63 @@ def move(board, direction):
         board[idx], board[nidx] = board[nidx], board[idx]
 
 
-# def main(stdscr):
-#     curses.curs_set(0)
-#     stdscr.keypad(True)
-#
-#     board = shuffle_board()
-#
-#     while True:
-#         draw(stdscr, board)
-#         key = stdscr.getch()
-#
-#         if key == ord('q'):
-#             break
-#         elif key == ord('s'):
-#             board = shuffle_board()
-#         elif key == ord('a'):
-#             pass
-#         else:
-#             move(board, key)
-#
-#     astarpath = astar(board)
-#     print(astarpath)
-#
-#     abc = stdscr.getch()
-#     print(abc)
+def main(stdscr):
+    curses.curs_set(0)
+    stdscr.keypad(True)
+
+    crawling = False
+
+    board = shuffle_board()
+
+    while True:
+        draw(stdscr, board)
+        key = stdscr.getch()
+
+        if key == ord('q'):
+            break
+        elif key == ord('s'):
+            board = shuffle_board()
+        elif key == ord('a'):
+            crawling = True
+            break
+        else:
+            move(board, key)
+
+    astarpath = []
+    crawlind = 0
+    if crawling:
+        astarpath = astar(board)
+
+    while crawling:
+        btemp = astarpath[crawlind].split()
+        for i in range(16):
+            board[i] = int(btemp[i])
+
+        draw(stdscr, board)
+        key = stdscr.getch()
+
+        if key == curses.KEY_LEFT:
+            crawlind = max(0, crawlind - 1)
+        elif key == curses.KEY_RIGHT:
+            crawlind = min(crawlind + 1, len(astarpath) - 1)
+        elif key == ord('q'):
+            crawling = False
+        else:
+            pass
 
 
 
-# if __name__ == "__main__":
-#     curses.wrapper(main)
 
-board = shuffle_board()
-print(board)
-print("options for start: ")
-options = genPoss(board)
-for o in options:
-    print(o)
-print("a* demo: \n")
-b = astar(board)
-print(b)
+if __name__ == "__main__":
+    curses.wrapper(main)
+
+# SOME PRIOR TESTING STUFF:
+# board = shuffle_board()
+# print(board)
+# print("options for start: ")
+# options = genPoss(board)
+# for o in options:
+#     print(o)
+# print("a* demo: \n")
+# b = astar(board)
+# print(b)
