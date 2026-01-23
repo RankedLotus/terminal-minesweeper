@@ -21,8 +21,8 @@ def incTile(bigstr, mineset, tile):
         bigstr[a + (b * GRID_X)] = chr(num + 1)
 
 
-def genRealBoard():
-    mineset = genMines(NUM_MINES)
+def genRealBoard(cursorPos):
+    mineset = genMines(NUM_MINES, cursorPos)
     bigstr = ['0'] * (GRID_X * GRID_Y)
 
     for (a, b) in mineset:
@@ -40,7 +40,7 @@ def genRealBoard():
 
     return bigstr
 
-def genMines(num: int):
+def genMines(num: int, cursorPos):
     # make set of all positions and remove chosen position from set
     cmines = set()
     count = 0
@@ -50,7 +50,7 @@ def genMines(num: int):
         tpair = (rx, ry)
 
         #check if pair exists, only inc counter if it does
-        if tpair not in cmines:
+        if tpair not in cmines and tpair != cursorPos:
             cmines.add(tpair)
             count += 1
 
@@ -125,12 +125,34 @@ def clearTile(real_board, cleared, tile):
                 clearTile(real_board, cleared, (x - 1, y - 1))
 
 
+def arrowsHandler(key, win, cursorPos):
+    dp = (0, 0)
+    # MOVING THE CURSOR
+    if key == curses.KEY_UP and cursorPos[1] > 0:
+        dp = (0, -1)
+    elif key == curses.KEY_DOWN and cursorPos[1] < GRID_Y - 1:
+        dp = (0, 1)
+    elif key == curses.KEY_LEFT and cursorPos[0] > 0:
+        dp = (-1 * X_SPACER, 0)
+    elif key == curses.KEY_RIGHT and cursorPos[0] < (GRID_X * X_SPACER) - 1:
+        dp = (1 * X_SPACER, 0)
+
+    return dp
+
+def refreshWin(win, cursorPos):
+    win.clear()
+    win.refresh()
+    # win.border()
+    changeMade = False
+    win.move(cursorPos[1], cursorPos[0])
+
 
 def main(stdscr):
     mine_counter = 0
     mines = [False] * (GRID_X * GRID_Y)
     cleared = [False] * (GRID_X * GRID_Y)
-    realboard = genRealBoard()
+    realboard = genRealBoard((0, 0))
+    isFirstMove = True
 
     cursorPos = (0, 0)
 
@@ -153,30 +175,19 @@ def main(stdscr):
 
         #refreshes the screen only if a change is made
         if changeMade:
-            win.clear()
-            win.refresh()
-            # win.border()
+            refreshWin(win, cursorPos)
             changeMade = False
             drawBoard(win, mines, cleared, realboard, mine_counter)
-            win.move(cursorPos[1], cursorPos[0])
 
-
-        # breaking out of loop
-
-        dp = (0, 0)
         key = win.getch()
-        # MOVING THE CURSOR
-        if key == curses.KEY_UP and cursorPos[1] > 0:
-            dp = (0, -1)
-        elif key == curses.KEY_DOWN and cursorPos[1] < GRID_Y - 1:
-            dp = (0, 1)
-        elif key == curses.KEY_LEFT and cursorPos[0] > 0:
-            dp = (-1 * X_SPACER, 0)
-        elif key == curses.KEY_RIGHT and cursorPos[0] < (GRID_X * X_SPACER) - 1:
-            dp = (1 * X_SPACER, 0)
+
+        # handling arrow key input
+        dp = arrowsHandler(key, win, cursorPos)
+
         # quitting the game
         if key == ord('q'):
             break
+
         # marking a mine
         # remember, [0] is x, whcih is scaled; [1] is y which is unscaled
         ind: int = (cursorPos[0] // X_SPACER) + (GRID_X * cursorPos[1])
@@ -191,6 +202,9 @@ def main(stdscr):
                 changeMade = True
         # clearing a mine
         if key == ord(' '):
+            if isFirstMove:
+                isFirstMove = False
+                realboard = genRealBoard(cursorPos)
             # check you're not trying to clear a marked square
             if not mines[ind]:
                 clearTile(realboard, cleared, (cursorPos[0] // X_SPACER, cursorPos[1]))
