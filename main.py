@@ -57,7 +57,7 @@ def genMines(num: int, cursorPos):
     return cmines
 
 
-def drawBoard(win, mines, cleared, realboard, mine_counter):
+def drawBoard(win, mines, cleared, realboard, mine_counter, status):
     # colors
     curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)
@@ -101,6 +101,9 @@ def drawBoard(win, mines, cleared, realboard, mine_counter):
                 win.addstr(y, x * X_SPACER, ". ")
 
         win.addstr("\n")
+    win.addstr("=" * GRID_X * X_SPACER)
+    win.addstr("\n")
+    win.addstr("GAME STATUS: " + status + "\n")
     win.addstr("Number of mines left: ")
     win.addstr(str(NUM_MINES - mine_counter) + ". \n")
     win.addstr("PRESS [q] TO QUIT GAME, PRESS [r] TO RESET BOARD")
@@ -146,8 +149,15 @@ def refreshWin(win, cursorPos):
     changeMade = False
     win.move(cursorPos[1], cursorPos[0])
 
-
+def count_clear(cleared):
+    ans = 0
+    for tile in cleared:
+        if tile:
+            ans += 1
+    return ans
 def main(stdscr):
+    status = "PLAYING"
+    clear_counter = 0
     mine_counter = 0
     mines = [False] * (GRID_X * GRID_Y)
     cleared = [False] * (GRID_X * GRID_Y)
@@ -177,7 +187,12 @@ def main(stdscr):
         if changeMade:
             refreshWin(win, cursorPos)
             changeMade = False
-            drawBoard(win, mines, cleared, realboard, mine_counter)
+            clear_counter = count_clear(cleared)
+            if clear_counter + NUM_MINES == GRID_Y * GRID_X:
+                status = "WON"
+            if status == "LOST":
+                cleared = [True] * (GRID_X * GRID_Y)
+            drawBoard(win, mines, cleared, realboard, mine_counter, status)
 
         key = win.getch()
 
@@ -190,6 +205,7 @@ def main(stdscr):
 
         # restarting the game
         if key == ord('r'):
+            status = "PLAYING"
             isFirstMove = True
             mine_counter = 0
             mines = [False] * (GRID_X * GRID_Y)
@@ -211,13 +227,21 @@ def main(stdscr):
                 changeMade = True
         # clearing a mine
         if key == ord(' '):
+            # losing if mine on not first move
+            if realboard[ind] == 'X' and not isFirstMove:
+                status = "LOST"
+
+            #if first move and hit mine, move it
             if isFirstMove:
                 isFirstMove = False
                 realboard = genRealBoard(cursorPos)
+                changeMade = True
+
             # check you're not trying to clear a marked square
-            if not mines[ind]:
+            if not mines[ind] and not isFirstMove:
                 clearTile(realboard, cleared, (cursorPos[0] // X_SPACER, cursorPos[1]))
                 changeMade = True
+
 
         if dp != (0, 0):
             cursorPos = (cursorPos[0] + dp[0], cursorPos[1] + dp[1])
