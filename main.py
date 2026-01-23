@@ -103,8 +103,8 @@ def drawBoard(win, mines, cleared, realboard, mine_counter):
         win.addstr("\n")
     win.addstr("Number of mines left: ")
     win.addstr(str(NUM_MINES - mine_counter) + ". \n")
-    win.addstr("PRESS [q] TO QUIT GAME, ")
-    win.addstr("PROJECT MADE BY GABRIEL POMIAN")
+    win.addstr("PRESS [q] TO QUIT GAME, PRESS [r] TO RESET BOARD")
+    win.addstr("\nPROJECT MADE BY GABRIEL POMIAN")
 
 
 def clearTile(real_board, cleared, tile):
@@ -158,7 +158,7 @@ def main(stdscr):
 
     stdscr.clear()
     stdscr.refresh()
-    win = curses.newwin(GRID_Y + 2, (X_SPACER * GRID_X) + 3, 0, 8)
+    win = curses.newwin(GRID_Y + 5, (X_SPACER * GRID_X) + 3, 0, 8)
     win.keypad(True) # makes arrow keys easier to read
     win.nodelay(True) # makes getch not block the program
 
@@ -187,6 +187,15 @@ def main(stdscr):
         # quitting the game
         if key == ord('q'):
             break
+
+        # restarting the game
+        if key == ord('r'):
+            isFirstMove = True
+            mine_counter = 0
+            mines = [False] * (GRID_X * GRID_Y)
+            cleared = [False] * (GRID_X * GRID_Y)
+            changeMade = True
+
 
         # marking a mine
         # remember, [0] is x, whcih is scaled; [1] is y which is unscaled
