@@ -2,6 +2,7 @@ import curses
 import random
 from collections import defaultdict
 import heapq
+from math import inf
 
 SIZE = 4
 EMPTY = 0
@@ -38,6 +39,8 @@ def is_solved(board):
 
 
 def stringify(board):
+    return tuple(board)
+
     ans = ""
 
     for i in board:
@@ -94,40 +97,224 @@ def crawler(board, original, parents):
     ans.reverse()
     return ans
 
+
+# def bstar(board):
+#     solved = list(range(1, SIZE * SIZE)) + [EMPTY]
+#
+#     # set up priority queue:
+#     pq = []
+#     heapq.heapify(pq)
+#
+#     heapq.heappush(pq, (heuristic(board), board, 0))
+#
+#     # setting up other data structures
+#     parent = defaultdict()
+#     seen = set()
+#     # seen.add(stringify(board))
+#     dists = defaultdict(lambda: inf)
+#     dists[stringify(board)] = 0
+#
+#     #assumes board is solvable
+#     while pq:
+#         curr = heapq.heappop(pq)
+#
+#         totH = curr[0]
+#         myL = curr[1]
+#         dist = curr[2]
+#
+#         strL = stringify(myL)
+#
+#         if curr[1] == solved:
+#             break
+#
+#         seen.add(strL)
+#
+#         # now you have to add the rest of the options to the pq
+#         for option in genPoss(myL):
+#             stropt = stringify(option)
+#             cdist = dists[strL] + 1
+#
+#             if cdist < dists[stropt]:
+#                 parent[stropt] = strL
+#                 dists[stropt] = cdist
+#
+#                 heapq.heappush(pq, (cdist + heuristic(option), option, cdist))
+#             #
+#             # if stropt not in seen and dist + 1 < dists[stropt]:
+#             #     dists[stropt] = dist + 1
+#             #     heapq.heappush(pq, (heuristic(option) + dist + 1, option, dist + 1))
+#             #
+#             #     parent[stropt] = strL
+#
+#     # take parent chain of answer out of parent dictionary
+#     ans = crawler(board=stringify(solved), original=stringify(board), parents=parent)
+#
+#     return ans
+
+
+def bstar(board):
+    start = tuple(board)
+    goal = tuple(list(range(1, SIZE * SIZE)) + [EMPTY])
+
+    # Priority queue entries: (f = g + h, g, state)
+    pq = []
+    heapq.heappush(pq, (heuristic(start), 0, start))
+
+    came_from = {}
+    g_score = {start: 0}
+    closed = set()
+
+    while pq:
+        f, g, current = heapq.heappop(pq)
+
+        if current in closed:
+            continue
+        closed.add(current)
+
+        if current == goal:
+            break
+
+        # Expand neighbors
+        for nxt in genPoss(list(current)):
+            nxt = tuple(nxt)
+            tentative_g = g + 1
+
+            if nxt in closed:
+                continue
+
+            if tentative_g < g_score.get(nxt, inf):
+                came_from[nxt] = current
+                g_score[nxt] = tentative_g
+                heapq.heappush(
+                    pq,
+                    (tentative_g + heuristic(nxt), tentative_g, nxt)
+                )
+
+    # Reconstruct path
+    path = []
+    cur = goal
+    while cur != start:
+        path.append(list(cur))
+        cur = came_from[cur]
+    path.append(list(start))
+    path.reverse()
+
+    return path
+
+def astarC(board):
+    solved = list(range(1, SIZE * SIZE)) + [EMPTY]
+
+    pq = []
+    heapq.heapify(pq)
+    heapq.heappush(pq, (0, board))
+
+    parent = defaultdict()
+    # distances = defaultdict(lambda: 1000 * 1000)
+    # distances[stringify(board)] = 0
+
+    curr = board
+
+    done = set()
+
+    while pq:
+        dist, curr = heapq.heappop(pq)
+
+        if curr == solved:
+            break
+
+        done.add(stringify(curr))
+
+        for option in genPoss(board):
+            if stringify(option) not in done:
+                print(option)
+                print("\n")
+                heapq.heappush(pq, (dist + 1, option))
+                parent[stringify(option)] = stringify(curr)
+
+    # take parent chain of answer out of parent dictionary
+    #ans = crawler(board=stringify(solved), original=stringify(board), parents=parent)
+
+    return parent
+
+
+def astarB(board):
+    solved = list(range(1, SIZE * SIZE)) + [EMPTY]
+
+    pq = []
+    heapq.heapify(pq)
+    heapq.heappush(pq, (heuristic(board), heuristic(board), 0, board)) # distance here is 0
+
+    parent = defaultdict()
+    distances = defaultdict(lambda: 1000 * 1000)
+
+    curr = board
+
+    done = set()
+
+    while pq:
+        cost, h, dist, curr = heapq.heappop(pq)
+        # break if done
+        if curr == solved:
+            break
+
+        done.add(stringify(curr))
+
+        for option in genPoss(curr):
+            if option not in done:
+                currD = dist + 1
+
+                if currD < distances[stringify(option)]:
+                    distances[stringify(option)] = currD
+                    h = heuristic(option)
+                    heapq.heappush(pq, (h + currD), h, currD, option)
+
+    # take parent chain of answer out of parent dictionary
+    ans = crawler(board=stringify(solved), original=stringify(board), parents=parent)
+
+    return ans
+
 def astar(board):
     solved = list(range(1, SIZE * SIZE)) + [EMPTY]
 
     # set up priority queue:
     pq = []
     heapq.heapify(pq)
-
     heapq.heappush(pq, (heuristic(board), board)) #
 
     # setting up other data structures
     parent = defaultdict()
+    distances = defaultdict(lambda: 1000 * 1000)
+
     seen = set()
     seen.add(stringify(board))
 
+    distances[stringify(board)] = 0
+
     # algorithm
     curr = board
+
     #assumes board is solvable
+
     while curr[1] != solved and pq:
         curr = heapq.heappop(pq)
 
-        dist = curr[0]
+        currH = curr[0]
         myL = curr[1]
         strL = stringify(myL)
         # print(strL + ", " + str(dist))
 
-
         # now you have to add the rest of the options to the pq
         for option in genPoss(myL):
-            if stringify(option) not in seen:
+            if True: #stringify(option) not in seen or distances[strL] + 1 < distances[stringify(option)]:
 
-                seen.add(stringify(option))
-                heapq.heappush(pq, (heuristic(option), option))
+                dist = distances[strL] + 1
+                if (stringify(option) not in seen) or (dist < distances[stringify(option)]):
+                    distances[stringify(option)] = dist
+                    heapq.heappush(pq, (heuristic(option) + distances[stringify(option)], option))
+                    parent[stringify(option)] = strL
+                    seen.add(stringify(option))
 
-                parent[stringify(option)] = strL
+                print(dist)
 
 
     # take parent chain of answer out of parent dictionary
@@ -185,6 +372,50 @@ def heuristic(board):
 
     return total
 
+def greedybfs(board):
+    solved = list(range(1, SIZE * SIZE)) + [EMPTY]
+
+    # set up priority queue:
+    pq = []
+    heapq.heapify(pq)
+
+    heapq.heappush(pq, (heuristic(board), board)) #
+
+    # setting up other data structures
+    parent = defaultdict()
+    seen = set()
+    seen.add(stringify(board))
+
+    # algorithm
+    curr = board
+
+    numits = 0
+
+    #assumes board is solvable
+    while curr[1] != solved and pq:
+        # print(f"pq len: {len(pq)}")
+        numits += 1
+        curr = heapq.heappop(pq)
+
+        dist = curr[0]
+        myL = curr[1]
+        strL = stringify(myL)
+        # print(strL + ", " + str(dist))
+
+
+        # now you have to add the rest of the options to the pq
+        for option in genPoss(myL):
+            if stringify(option) not in seen:
+
+                seen.add(stringify(option))
+                heapq.heappush(pq, (heuristic(option), option))
+
+                parent[stringify(option)] = strL
+
+
+    # take parent chain of answer out of parent dictionary
+    ans = crawler(board=stringify(solved), original=stringify(board), parents=parent)
+    return ans # (ans, numits)
 
 def move(board, direction):
     idx = board.index(EMPTY)
@@ -233,12 +464,13 @@ def main(stdscr):
     astarpath = []
     crawlind = 0
     if crawling:
-        astarpath = astar(board)
+        astarpath = greedybfs(board)
 
     while crawling:
-        btemp = astarpath[crawlind].split()
-        for i in range(16):
-            board[i] = int(btemp[i])
+        board = astarpath[crawlind]
+        # btemp = astarpath[crawlind].split()
+        # for i in range(16):
+        #     board[i] = int(btemp[i])
 
         draw(stdscr, board)
         key = stdscr.getch()
@@ -253,18 +485,33 @@ def main(stdscr):
             pass
 
 
-
+debug = False
 
 if __name__ == "__main__":
-    curses.wrapper(main)
+    if debug:
+        counter : float = 0
+        mi = inf
+        ma = 0
+        for i in range(500):
+            board = shuffle_board()
+            b, nits = greedybfs(board)
+            counter += nits / 500
+            mi = min(mi, nits)
+            ma = max(ma, nits)
+        print(counter)
+        print(f"min: {mi}")
+        print(f"max: {ma}")
+    else:
+        curses.wrapper(main)
 
-# SOME PRIOR TESTING STUFF:
-# board = shuffle_board()
+#SOME PRIOR TESTING STUFF:
+# board = shuffle_board() # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0, 13, 14, 15]# shuffle_board()
 # print(board)
 # print("options for start: ")
 # options = genPoss(board)
 # for o in options:
 #     print(o)
 # print("a* demo: \n")
-# b = astar(board)
+# b = bstar(board)
 # print(b)
+
