@@ -109,13 +109,30 @@ def drawBoard(win, mines, cleared, realboard, mine_counter, status):
     win.addstr("PRESS [q] TO QUIT GAME, PRESS [r] TO RESET BOARD")
     win.addstr("\nPROJECT MADE BY GABRIEL POMIAN")
 
+def im(realboard, tile):
+    ind = tile[0] + (tile[1] * GRID_X)
+    if realboard[ind] == 'X':
+        return 1
+    else:
+        return 0
 
-def clearTile(real_board, cleared, tile):
+
+def numMines(realboard, tile): #rb = realboard
+    x = tile[0]
+    y = tile[1]
+    ans = 0
+    for i in range(-1, 2):
+        for j in range(-1, 2):
+            if i != 0 or j != 0:
+                ans += im(realboard, (x + i, y + j))
+    return ans
+
+def cth(real_board, cleared, tile):
     x = tile[0]
     y = tile[1]
     if x >= 0 and y >= 0 and x < GRID_X and y < GRID_Y:
         ind = x + (y * GRID_X)
-        if cleared[ind] == False:
+        if cleared[ind] == False and real_board[ind] != 'X':
             cleared[ind] = True
             if real_board[x + (y * GRID_X)] == '0':
                 clearTile(real_board, cleared, (x, y + 1))
@@ -126,6 +143,53 @@ def clearTile(real_board, cleared, tile):
                 clearTile(real_board, cleared, (x + 1, y - 1))
                 clearTile(real_board, cleared, (x, y - 1))
                 clearTile(real_board, cleared, (x - 1, y - 1))
+
+
+def clearTile(real_board, cleared, tile, marked, og):
+    x = tile[0]
+    y = tile[1]
+    if x >= 0 and y >= 0 and x < GRID_X and y < GRID_Y:
+        ind = x + (y * GRID_X)
+        if cleared[ind] == False and marked[ind] == False:
+            cleared[ind] = True
+            if real_board[x + (y * GRID_X)] == '0':
+                m = marked
+                clearTile(real_board, cleared, (x, y + 1), m, False)
+                clearTile(real_board, cleared, (x + 1, y + 1), m, False)
+                clearTile(real_board, cleared, (x - 1, y + 1), m, False)
+                clearTile(real_board, cleared, (x + 1, y), m, False)
+                clearTile(real_board, cleared, (x - 1, y), m, False)
+                clearTile(real_board, cleared, (x + 1, y - 1), m, False)
+                clearTile(real_board, cleared, (x, y - 1), m, False)
+                clearTile(real_board, cleared, (x - 1, y - 1), m, False)
+        elif og:
+            if real_board[ind] in "12345678":
+                n_marked = 0
+                for i in range(-1, 2):
+                    for j in range(-1, 2):
+                        if i != 0 or j != 0:
+                            # make sure its within bounds
+                            a = x + i
+                            b = y + j
+                            if a >= 0 and b >= 0 and a < GRID_X and b < GRID_Y:
+                                mInd = a + (b * GRID_X)
+                                if marked[mInd]:
+                                    n_marked += 1
+
+                if n_marked == int(real_board[ind]):
+                    #real_board[ind] = 'B'
+                    for i in range(-1, 2):
+                        for j in range(-1, 2):
+                            if i != 0 or j != 0:
+                                a = x + i
+                                b = y + j
+                                if a >= 0 and b >= 0 and a < GRID_X and b < GRID_Y:
+                                    ind = a + (b * GRID_X)
+                                    clearTile(real_board, cleared, (a, b), marked, False)
+                                # clearTile(real_board, cleared, (x + i, y + j), marked, False)
+
+                            #cth(real_board, cleared,(x + i, y + j))
+        # PUT CHORDING CODE HERE
 
 
 def arrowsHandler(key, win, cursorPos):
@@ -239,9 +303,14 @@ def main(stdscr):
 
             # check you're not trying to clear a marked square
             if not mines[ind] and not isFirstMove:
-                clearTile(realboard, cleared, (cursorPos[0] // X_SPACER, cursorPos[1]))
+                clearTile(realboard, cleared, (cursorPos[0] // X_SPACER, cursorPos[1]), mines, True)
                 changeMade = True
 
+        if status == "PLAYING":
+            for i in range(GRID_X * GRID_Y):
+                if cleared[i] and (realboard[i] == 'X'):
+                    changeMade = True
+                    status = "LOST"
 
         if dp != (0, 0):
             cursorPos = (cursorPos[0] + dp[0], cursorPos[1] + dp[1])
