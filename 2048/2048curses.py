@@ -1,5 +1,6 @@
 import curses
-from clean2048 import Board, Move, Strategy, StratType
+from strategy2048 import Move, Strategy, StratType
+from board2048 import Board
 import time
 
 CELL_W = 6
