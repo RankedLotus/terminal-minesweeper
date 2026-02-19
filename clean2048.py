@@ -1,6 +1,9 @@
 from enum import Enum
 from typing import List, Tuple, Optional
 import random
+import time
+import math
+from collections import defaultdict
 
 class Move(Enum):
     UP = 1
@@ -17,11 +20,86 @@ class StratType(Enum):
     LOOK4 = "Look4"
 
 class Strategy():
+    empty_weight: float
+    snake_weight: float
     moveset = [Move.UP, Move.DOWN, Move.LEFT, Move.RIGHT]
+    abk_snake = [4**15, 4**14, 4**13, 4**12, 4**8, 4**9, 4**10, 4**11, 4**7, 4**6, 4**5, 4**4, 4**0, 4**1, 4**2, 4**3]
 
-    def __init__(self):
-        pass
 
+    def __init__(self, ew=1.0, sw=1.0, tw=(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)):
+        self.empty_weight = ew
+        self.snake_weight = sw
+        self.tile_weights = tw
+
+
+    def heuristic(self, currBoard):
+        mSum = 0
+        cbd = currBoard.cells
+        eti = 0
+        for i in range(16):
+            if cbd[i] == 0:
+                eti += 1
+            else:
+                # mSum += math.pow(2,cbd[i]) * (16 - i) * (16 - i)
+                mSum += self.abk_snake[i] * (2 ** cbd[i])
+        return Board.score(currBoard)# mSum#Board.score(currBoard) * self.snake_weight # + eti * eti * self.empty_weight
+        # return eti * self.empty_weight + mSum * self.snake_weight
+        # return mSum + (eti * eti) * 4096
+
+    def heuristic_test(self, currBoard):
+        mSum = 0
+        largest = 0
+        # sndlargest = 0
+        ntiles = 0
+        corners = {0, 3, 12, 15}
+        cbc = currBoard.cells
+        for tile in cbc:
+            if tile > largest:
+                largest = tile
+
+        for i in range(len(cbc)):
+            base_score = math.pow(2, cbc[i]) * (cbc[i] - 1)
+            if i <= 3 and largest - i == cbc[i]:
+                mSum += math.pow(2, largest) * (largest - 1)
+            else:
+                mSum += base_score
+        #     if tile > 0:
+        #         if tile > largest:
+        #             largest = tile
+        #         ntiles += 1
+        #     elif tile > sndlargest and tile != largest:
+        #         sndlargest = tile
+        #     mSum += tile # math.pow(2, tile)
+        # trsum = cbc[0] + cbc[1] + cbc[2] + cbc[3]
+        # seq = 0
+        # if largest == cbc[0]:
+        #     seq += ntiles
+        # if sndlargest == cbc[1]:
+        #     seq += ntiles
+        return mSum
+
+    def custom_depth_look(self, currBoard, depth):
+        bestboard = 0
+        bestmove = None
+        total_best = 0
+        poss_moves = Board.legal_moves(currBoard)
+        # iterate through the possible moves from your current board state.
+        for move in poss_moves:
+            cb = Board.copy(currBoard)
+            cb = Board.make_move(cb, move)
+            cbh = self.heuristic(cb)
+            # if you're at the bottom, just compare the 4 you can see from here
+            if depth == 1:
+                if cbh > bestboard:
+                    bestboard = cbh
+            # otherwise, keep digging down.
+            else:
+                (bboard, bmove) = self.custom_depth_look(cb, depth - 1)
+                if bboard > bestboard:
+                    bestboard = bboard
+                    bestmove = move
+
+        return (bestboard, bestmove)
 
     def four_move_look(self, currBoard):
         bestboard = 0
@@ -48,7 +126,7 @@ class Strategy():
                     for m4 in pm4:
                         cb4 = Board.copy(cb3)
 
-                        cbscore = Board.score(Board.make_move(cb4, m4))
+                        cbscore = self.heuristic(Board.make_move(cb4, m4)) #Board.score(Board.make_move(cb4, m4))
                         if cbscore > bestboard:
                             bestboard = cbscore
                             bestmove = move
@@ -76,7 +154,7 @@ class Strategy():
                 for m3 in pm3:
                     cb3 = Board.copy(cb2)
 
-                    cbscore = Board.score(Board.make_move(cb3, m3))
+                    cbscore = self.heuristic(Board.make_move(cb3, m3))# Board.score(Board.make_move(cb3, m3))
                     if cbscore > bestboard:
                         bestboard = cbscore
                         bestmove = move
@@ -96,7 +174,7 @@ class Strategy():
             for m2 in pm2:
                 cb2 = Board.copy(cb)
 
-                cbscore = Board.score(Board.make_move(cb2, m2))
+                cbscore = self.heuristic(Board.make_move(cb2, m2))# Board.score(Board.make_move(cb2, m2))
                 if cbscore > bestboard:
                     bestboard = cbscore
                     bestmove = move
@@ -105,6 +183,10 @@ class Strategy():
 
     # @staticmethod
     def next_move(self, currBoard, strat : StratType) -> Move:
+        if True:
+            (bboard, bmove) = self.custom_depth_look(currBoard, 3)
+            return bmove
+
         if strat == StratType.RAND:
             poss_moves = Board.legal_moves(currBoard)
             if len(poss_moves) > 0:
@@ -118,7 +200,7 @@ class Strategy():
             poss_moves = Board.legal_moves(currBoard)
             for move in poss_moves:
                 cb = Board.copy(currBoard)
-                cbscore = Board.score(Board.make_move(cb, move))
+                cbscore = self.heuristic(cb)#Board.score(Board.make_move(cb, move))
                 if cbscore > bestboard:
                     bestboard = cbscore
                     bestmove = move
@@ -289,33 +371,83 @@ class Board:
             rows.append(" ".join(f"{(2**n if n else '.'):>4}" for n in row))
         return "\n".join(rows)
 
-b = Board([
+testB = Board([
     1, 1, 0, 0,
     2, 0, 0, 0,
     0, 0, 0, 0,
     0, 0, 0, 0
 ])
 
+b = testB.copy()
+
+bestScore = 0
+bestWeights = (0, 0)
+def tryOne(mb, strat):
+    nx = strat.next_move(mb, StratType.LOOK3)
+
+    while nx != None:
+        mb = Board.make_move(mb, nx)
+        nx = strat.next_move(mb, StratType.LOOK3)
+
+    print("board done")
+    return mb
+
 # print(b)
 # print("Score:", b.score())
 # print("Legal moves:", b.legal_moves())
-
-
-# imp = ""
-# while(imp != "q"):
-#     print(b)
-#     print("Score:", b.score())
+# strB = Strategy()
 #
-#     imp = input("next move?\n")
-#     if imp == "w":
-#         b = b.make_move(Move.UP)
-#     elif imp == "s":
-#         b = b.make_move(Move.DOWN)
-#     elif imp == "d":
-#         b = b.make_move(Move.RIGHT)
-#     elif imp == "a":
-#         b = b.make_move(Move.LEFT)
-#     elif imp == "r":
-#         b = b.make_move(Strategy.next_move(currBoard=b, strat=StratType.RAND))
-#     elif imp == "t":
-#         b = b.make_move(Strategy.next_move(currBoard=b, strat=StratType.SHORTSIGHT))
+# next = strB.next_move(b, StratType.LOOK3)
+#
+# start = time.perf_counter()
+
+# while next != None:
+#     b = Board.make_move(b, next)
+#     next = strB.next_move(b, StratType.LOOK3)
+#
+# end = time.perf_counter()
+#
+# print(b)
+# print(f"Score: {b.score()}")
+
+# print(f"elapsed time: {end - start}")
+
+
+
+
+
+#
+# f1 = open("score_reg.txt", "a")
+#
+# for i in range(5): #number of weight changes
+#     avgscore = 0
+#     # ew = random.random() * 10 * random.random()
+#     # sw = random.random() * 10 * random.random() * 10
+#     # tile_weights = []
+#     # for rr in range(16):
+#     #     tile_weights.append(random.random() * 50)
+#     # tw = tuple(tile_weights)
+#     tw = (16, 12, 8, 4,
+#           12, 8, 4, 3,
+#           8, 4, 3, 2,
+#           4, 3, 2, 1)
+#     print(f"the tile weights: {tw}")
+#     ew = 1
+#     sw = 1
+#
+#     strB = Strategy(ew, sw, tw)
+#     for j in range(10): #number of trials per weight
+#         newB = testB.copy()
+#         endB = tryOne(newB, strB)
+#         avgscore += Board.score(endB) / 5
+#         f1.write(str(Board.score(endB)) + "\n")
+#
+#     print(avgscore)
+#     if avgscore > bestScore:
+#         bestScore = avgscore
+#         bestWeights = (ew, sw)
+#         print(bestWeights)
+#
+# # print(f"Best weight: {bestWeights}")
+# # print(f"Best score: {bestScore}")
+# f1.close()
