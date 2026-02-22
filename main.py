@@ -50,9 +50,10 @@ def genMines(num: int, cursorPos):
         tpair = (rx, ry)
 
         #check if pair exists, only inc counter if it does
-        if tpair not in cmines and tpair != cursorPos:
-            cmines.add(tpair)
-            count += 1
+        if tpair not in cmines:
+            if rx != cursorPos[0] and ry != cursorPos[1]:
+                cmines.add(tpair)
+                count += 1
 
     return cmines
 
@@ -110,7 +111,11 @@ def drawBoard(win, mines, cleared, realboard, mine_counter, status):
     win.addstr("\nPROJECT MADE BY GABRIEL POMIAN")
 
 def im(realboard, tile):
-    ind = tile[0] + (tile[1] * GRID_X)
+    x = tile[0]
+    y = tile[1]
+    ind = x + (y * GRID_X)
+    if x < 0 or y < 0 or x > GRID_X or y > GRID_Y:
+        return 0
     if realboard[ind] == 'X':
         return 1
     else:
@@ -150,6 +155,11 @@ def clearTile(real_board, cleared, tile, marked, og):
     y = tile[1]
     if x >= 0 and y >= 0 and x < GRID_X and y < GRID_Y:
         ind = x + (y * GRID_X)
+
+        # should never be clearing a marked tile.
+        if marked[ind]:
+            return
+
         if cleared[ind] == False and marked[ind] == False:
             cleared[ind] = True
             if real_board[x + (y * GRID_X)] == '0':
@@ -185,7 +195,10 @@ def clearTile(real_board, cleared, tile, marked, og):
                                 b = y + j
                                 if a >= 0 and b >= 0 and a < GRID_X and b < GRID_Y:
                                     ind = a + (b * GRID_X)
-                                    clearTile(real_board, cleared, (a, b), marked, False)
+                                    # this should fix the error of incorrect destruction on a chord.
+                                    if not marked[ind]:
+                                        clearTile(real_board, cleared, (a, b), marked, False)
+                                    # clearTile(real_board, cleared, (a, b), marked, False)
                                 # clearTile(real_board, cleared, (x + i, y + j), marked, False)
 
                             #cth(real_board, cleared,(x + i, y + j))
@@ -275,11 +288,31 @@ def main(stdscr):
             mines = [False] * (GRID_X * GRID_Y)
             cleared = [False] * (GRID_X * GRID_Y)
             changeMade = True
+            realboard = None
+            continue
 
 
         # marking a mine
         # remember, [0] is x, whcih is scaled; [1] is y which is unscaled
         ind: int = (cursorPos[0] // X_SPACER) + (GRID_X * cursorPos[1])
+
+        if key == ord(' '):
+
+            #if first move and hit mine, move it
+            if isFirstMove:
+                isFirstMove = False
+                realboard = genRealBoard(cursorPos)
+                changeMade = True
+
+                # losing if mine on not first move
+                if realboard[ind] == 'X' and not isFirstMove:
+                    status = "LOST"
+
+            # check you're not trying to clear a marked square
+            if not mines[ind] and not isFirstMove:
+                clearTile(realboard, cleared, (cursorPos[0] // X_SPACER, cursorPos[1]), mines, True)
+                changeMade = True
+            continue
 
         if key == ord('m'):
             if not cleared[ind]:
@@ -289,22 +322,8 @@ def main(stdscr):
                 else:
                     mine_counter -= 1
                 changeMade = True
+            continue
         # clearing a mine
-        if key == ord(' '):
-            # losing if mine on not first move
-            if realboard[ind] == 'X' and not isFirstMove:
-                status = "LOST"
-
-            #if first move and hit mine, move it
-            if isFirstMove:
-                isFirstMove = False
-                realboard = genRealBoard(cursorPos)
-                changeMade = True
-
-            # check you're not trying to clear a marked square
-            if not mines[ind] and not isFirstMove:
-                clearTile(realboard, cleared, (cursorPos[0] // X_SPACER, cursorPos[1]), mines, True)
-                changeMade = True
 
         if status == "PLAYING":
             for i in range(GRID_X * GRID_Y):
